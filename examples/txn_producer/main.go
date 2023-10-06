@@ -11,11 +11,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	_ "net/http/pprof"
-
-	"github.com/rcrowley/go-metrics"
 
 	"github.com/IBM/sarama"
 )
@@ -29,8 +26,6 @@ var (
 	verbose   = false
 
 	recordsNumber int64 = 1
-
-	recordsRate = metrics.GetOrRegisterMeter("records.rate", nil)
 )
 
 func init() {
@@ -76,8 +71,6 @@ func main() {
 		config.Net.MaxOpenRequests = 1
 		return config
 	})
-
-	go metrics.Log(metrics.DefaultRegistry, 5*time.Second, log.New(os.Stderr, "metrics: ", log.LstdFlags))
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -158,7 +151,6 @@ func produceTestRecord(producerProvider *producerProvider) {
 		}
 		return
 	}
-	recordsRate.Mark(recordsNumber)
 }
 
 // pool of producers that ensure transactional-id is unique.

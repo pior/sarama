@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/gzip"
-	"github.com/rcrowley/go-metrics"
 	"golang.org/x/net/proxy"
 )
 
@@ -492,12 +491,6 @@ type Config struct {
 	// latest features. Setting it to a version greater than you are actually
 	// running may lead to random breakage.
 	Version KafkaVersion
-	// The registry to define metrics into.
-	// Defaults to a local registry.
-	// If you want to disable metrics gathering, set "metrics.UseNilMetrics" to "true"
-	// prior to starting Sarama.
-	// See Examples on how to use the metrics registry
-	MetricRegistry metrics.Registry
 }
 
 // NewConfig returns a new configuration instance with sane defaults.
@@ -557,7 +550,6 @@ func NewConfig() *Config {
 	c.ChannelBufferSize = 256
 	c.ApiVersionsRequest = true
 	c.Version = DefaultVersion
-	c.MetricRegistry = metrics.NewRegistry()
 
 	return c
 }

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
-	"github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1583,10 +1582,6 @@ func TestAsyncProducerIdempotentEpochExhaustion(t *testing.T) {
 //nolint:paralleltest
 func TestBrokerProducerShutdown(t *testing.T) {
 	defer leaktest.Check(t)()
-	metrics.UseNilMetrics = true // disable Sarama's go-metrics library
-	defer func() {
-		metrics.UseNilMetrics = false
-	}()
 
 	mockBroker := NewMockBroker(t, 1)
 	metadataResponse := &MetadataResponse{}

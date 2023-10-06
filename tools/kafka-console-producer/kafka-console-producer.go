@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rcrowley/go-metrics"
-
 	"github.com/IBM/sarama"
 	"github.com/IBM/sarama/tools/tls"
 )
@@ -23,7 +21,6 @@ var (
 	partitioner   = flag.String("partitioner", "", "The partitioning scheme to use. Can be `hash`, `manual`, or `random`")
 	partition     = flag.Int("partition", -1, "The partition to produce to.")
 	verbose       = flag.Bool("verbose", false, "Turn on sarama logging to stderr")
-	showMetrics   = flag.Bool("metrics", false, "Output metrics on successful publish to stderr")
 	silent        = flag.Bool("silent", false, "Turn off printing the message's topic, partition, and offset to stdout")
 	tlsEnabled    = flag.Bool("tls-enabled", false, "Whether to enable TLS")
 	tlsSkipVerify = flag.Bool("tls-skip-verify", false, "Whether skip TLS server cert verification")
@@ -135,9 +132,6 @@ func main() {
 		printErrorAndExit(69, "Failed to produce message: %s", err)
 	} else if !*silent {
 		fmt.Printf("topic=%s\tpartition=%d\toffset=%d\n", *topic, partition, offset)
-	}
-	if *showMetrics {
-		metrics.WriteOnce(config.MetricRegistry, os.Stderr)
 	}
 }
 

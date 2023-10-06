@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jcmturner/gokrb5/v8/krberror"
-	"github.com/rcrowley/go-metrics"
 )
 
 func ExampleBroker() {
@@ -140,8 +139,8 @@ func TestSimpleBrokerCommunication(t *testing.T) {
 			// notify us about the metrics
 			timeout := 500 * time.Millisecond
 			select {
-			case mockBrokerMetrics := <-pendingNotify:
-				validateBrokerMetrics(t, broker, mockBrokerMetrics)
+			case <-pendingNotify:
+				// ??
 			case <-time.After(timeout):
 				t.Errorf("No request received for: %s after waiting for %v", tt.name, timeout)
 			}
@@ -297,14 +296,6 @@ func TestSASLOAuthBearer(t *testing.T) {
 
 			// broker executes SASL requests against mockBroker
 			broker := NewBroker(mockBroker.Addr())
-			broker.requestRate = metrics.NilMeter{}
-			broker.outgoingByteRate = metrics.NilMeter{}
-			broker.incomingByteRate = metrics.NilMeter{}
-			broker.requestSize = metrics.NilHistogram{}
-			broker.responseSize = metrics.NilHistogram{}
-			broker.responseRate = metrics.NilMeter{}
-			broker.requestLatency = metrics.NilHistogram{}
-			broker.requestsInFlight = metrics.NilCounter{}
 
 			conf := NewTestConfig()
 			conf.Net.SASL.Mechanism = SASLTypeOAuth
@@ -406,14 +397,6 @@ func TestSASLSCRAMSHAXXX(t *testing.T) {
 			mockBroker := NewMockBroker(t, 0)
 			broker := NewBroker(mockBroker.Addr())
 			// broker executes SASL requests against mockBroker
-			broker.requestRate = metrics.NilMeter{}
-			broker.outgoingByteRate = metrics.NilMeter{}
-			broker.incomingByteRate = metrics.NilMeter{}
-			broker.requestSize = metrics.NilHistogram{}
-			broker.responseSize = metrics.NilHistogram{}
-			broker.responseRate = metrics.NilMeter{}
-			broker.requestLatency = metrics.NilHistogram{}
-			broker.requestsInFlight = metrics.NilCounter{}
 
 			mockSASLAuthResponse := NewMockSaslAuthenticateResponse(t).SetAuthBytes([]byte(test.scramChallengeResp))
 			mockSASLHandshakeResponse := NewMockSaslHandshakeResponse(t).SetEnabledMechanisms([]string{SASLTypeSCRAMSHA256, SASLTypeSCRAMSHA512})
@@ -524,14 +507,6 @@ func TestSASLPlainAuth(t *testing.T) {
 
 			// broker executes SASL requests against mockBroker
 			broker := NewBroker(mockBroker.Addr())
-			broker.requestRate = metrics.NilMeter{}
-			broker.outgoingByteRate = metrics.NilMeter{}
-			broker.incomingByteRate = metrics.NilMeter{}
-			broker.requestSize = metrics.NilHistogram{}
-			broker.responseSize = metrics.NilHistogram{}
-			broker.responseRate = metrics.NilMeter{}
-			broker.requestLatency = metrics.NilHistogram{}
-			broker.requestsInFlight = metrics.NilCounter{}
 
 			conf := NewTestConfig()
 			conf.Net.SASL.Mechanism = SASLTypePlaintext
@@ -601,17 +576,6 @@ func TestSASLReadTimeout(t *testing.T) {
 	})
 
 	broker := NewBroker(mockBroker.Addr())
-	{
-		broker.requestRate = metrics.NilMeter{}
-		broker.outgoingByteRate = metrics.NilMeter{}
-		broker.incomingByteRate = metrics.NilMeter{}
-		broker.requestSize = metrics.NilHistogram{}
-		broker.responseSize = metrics.NilHistogram{}
-		broker.responseRate = metrics.NilMeter{}
-		broker.requestLatency = metrics.NilHistogram{}
-		broker.requestsInFlight = metrics.NilCounter{}
-	}
-
 	conf := NewTestConfig()
 	{
 		conf.Net.ReadTimeout = time.Millisecond
@@ -695,14 +659,6 @@ func TestGSSAPIKerberosAuth_Authorize(t *testing.T) {
 				return nil
 			})
 			broker := NewBroker(mockBroker.Addr())
-			broker.requestRate = metrics.NilMeter{}
-			broker.outgoingByteRate = metrics.NilMeter{}
-			broker.incomingByteRate = metrics.NilMeter{}
-			broker.requestSize = metrics.NilHistogram{}
-			broker.responseSize = metrics.NilHistogram{}
-			broker.responseRate = metrics.NilMeter{}
-			broker.requestLatency = metrics.NilHistogram{}
-			broker.requestsInFlight = metrics.NilCounter{}
 
 			conf := NewTestConfig()
 			conf.Net.SASL.Mechanism = SASLTypeGSSAPI
@@ -1372,61 +1328,12 @@ var brokerFailedReqTestTable = []struct {
 	},
 }
 
-func validateBrokerMetrics(t *testing.T, broker *Broker, mockBrokerMetrics brokerMetrics) {
-	metricValidators := newMetricValidators()
-	mockBrokerBytesRead := mockBrokerMetrics.bytesRead
-	mockBrokerBytesWritten := mockBrokerMetrics.bytesWritten
-
-	// Check that the number of bytes sent corresponds to what the mock broker received
-	metricValidators.registerForAllBrokers(broker, countMeterValidator("incoming-byte-rate", mockBrokerBytesWritten))
-	if mockBrokerBytesWritten == 0 {
-		// This a ProduceRequest with NoResponse
-		metricValidators.registerForAllBrokers(broker, countMeterValidator("response-rate", 0))
-		metricValidators.registerForAllBrokers(broker, countHistogramValidator("response-size", 0))
-		metricValidators.registerForAllBrokers(broker, minMaxHistogramValidator("response-size", 0, 0))
-	} else {
-		metricValidators.registerForAllBrokers(broker, countMeterValidator("response-rate", 1))
-		metricValidators.registerForAllBrokers(broker, countHistogramValidator("response-size", 1))
-		metricValidators.registerForAllBrokers(broker, minMaxHistogramValidator("response-size", mockBrokerBytesWritten, mockBrokerBytesWritten))
-	}
-
-	// Check that the number of bytes received corresponds to what the mock broker sent
-	metricValidators.registerForAllBrokers(broker, countMeterValidator("outgoing-byte-rate", mockBrokerBytesRead))
-	metricValidators.registerForAllBrokers(broker, countMeterValidator("request-rate", 1))
-	metricValidators.registerForAllBrokers(broker, countHistogramValidator("request-size", 1))
-	metricValidators.registerForAllBrokers(broker, minMaxHistogramValidator("request-size", mockBrokerBytesRead, mockBrokerBytesRead))
-
-	// Check that there is no more requests in flight
-	metricValidators.registerForAllBrokers(broker, counterValidator("requests-in-flight", 0))
-
-	// Run the validators
-	metricValidators.run(t, broker.conf.MetricRegistry)
-}
-
 func BenchmarkBroker_Open(b *testing.B) {
 	mb := NewMockBroker(nil, 0)
 	defer mb.Close()
 	broker := NewBroker(mb.Addr())
 	// Set the broker id in order to validate local broker metrics
 	broker.id = 0
-	metrics.UseNilMetrics = false
-	conf := NewTestConfig()
-	conf.Version = V1_0_0_0
-	for i := 0; i < b.N; i++ {
-		err := broker.Open(conf)
-		if err != nil {
-			b.Fatal(err)
-		}
-		broker.Close()
-	}
-}
-
-func BenchmarkBroker_No_Metrics_Open(b *testing.B) {
-	mb := NewMockBroker(nil, 0)
-	defer mb.Close()
-	broker := NewBroker(mb.Addr())
-	broker.id = 0
-	metrics.UseNilMetrics = true
 	conf := NewTestConfig()
 	conf.Version = V1_0_0_0
 	for i := 0; i < b.N; i++ {
@@ -1485,8 +1392,6 @@ func Test_handleThrottledResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			broker.metricRegistry = metrics.NewRegistry()
-			broker.brokerThrottleTime = broker.registerHistogram("throttle-time-in-ms")
 			startTime := time.Now()
 			broker.handleThrottledResponse(tt.response)
 			broker.waitIfThrottled()
@@ -1494,22 +1399,14 @@ func Test_handleThrottledResponse(t *testing.T) {
 				if time.Since(startTime) < throttleTime {
 					t.Fatal("expected throttling to cause delay")
 				}
-				if broker.brokerThrottleTime.Min() != int64(throttleTimeMs) {
-					t.Fatal("expected throttling to update metrics")
-				}
 			} else {
 				if time.Since(startTime) > throttleTime {
 					t.Fatal("expected no throttling delay")
-				}
-				if broker.brokerThrottleTime.Count() != 0 {
-					t.Fatal("expected no metrics update")
 				}
 			}
 		})
 	}
 	t.Run("test second throttle timer overrides first", func(t *testing.T) {
-		broker.metricRegistry = metrics.NewRegistry()
-		broker.brokerThrottleTime = broker.registerHistogram("throttle-time-in-ms")
 		broker.handleThrottledResponse(&MetadataResponse{
 			ThrottleTimeMs: int32(throttleTimeMs),
 		})
@@ -1524,12 +1421,6 @@ func Test_handleThrottledResponse(t *testing.T) {
 		broker.waitIfThrottled()
 		if time.Since(startTime) < throttleTime*2 {
 			t.Fatal("expected throttling to use second delay")
-		}
-		if broker.brokerThrottleTime.Min() != int64(throttleTimeMs) {
-			t.Fatal("expected throttling to update metrics")
-		}
-		if broker.brokerThrottleTime.Max() != int64(throttleTimeMs*2) {
-			t.Fatal("expected throttling to update metrics")
 		}
 	})
 }

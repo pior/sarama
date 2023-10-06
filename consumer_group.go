@@ -7,8 +7,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/rcrowley/go-metrics"
 )
 
 // ErrClosedConsumerGroup is the error returned when a method is called on a consumer group that has been closed.
@@ -92,8 +90,6 @@ type consumerGroup struct {
 	closeOnce  sync.Once
 
 	userData []byte
-
-	metricRegistry metrics.Registry
 }
 
 // NewConsumerGroup creates a new consumer group the given broker addresses and configuration.
@@ -135,14 +131,13 @@ func newConsumerGroup(groupID string, client Client) (ConsumerGroup, error) {
 	}
 
 	cg := &consumerGroup{
-		client:         client,
-		consumer:       consumer,
-		config:         config,
-		groupID:        groupID,
-		errors:         make(chan error, config.ChannelBufferSize),
-		closed:         make(chan none),
-		userData:       config.Consumer.Group.Member.UserData,
-		metricRegistry: newCleanupRegistry(config.MetricRegistry),
+		client:   client,
+		consumer: consumer,
+		config:   config,
+		groupID:  groupID,
+		errors:   make(chan error, config.ChannelBufferSize),
+		closed:   make(chan none),
+		userData: config.Consumer.Group.Member.UserData,
 	}
 	if config.Consumer.Group.InstanceId != "" && config.Version.IsAtLeast(V2_3_0_0) {
 		cg.groupInstanceId = &config.Consumer.Group.InstanceId
@@ -177,8 +172,6 @@ func (c *consumerGroup) Close() (err error) {
 		if e := c.client.Close(); e != nil {
 			err = e
 		}
-
-		c.metricRegistry.UnregisterAll()
 	})
 	return
 }
@@ -275,37 +268,12 @@ func (c *consumerGroup) newSession(ctx context.Context, topics []string, handler
 		return c.retryNewSession(ctx, topics, handler, retries, true)
 	}
 
-	var (
-		metricRegistry          = c.metricRegistry
-		consumerGroupJoinTotal  metrics.Counter
-		consumerGroupJoinFailed metrics.Counter
-		consumerGroupSyncTotal  metrics.Counter
-		consumerGroupSyncFailed metrics.Counter
-	)
-
-	if metricRegistry != nil {
-		consumerGroupJoinTotal = metrics.GetOrRegisterCounter(fmt.Sprintf("consumer-group-join-total-%s", c.groupID), metricRegistry)
-		consumerGroupJoinFailed = metrics.GetOrRegisterCounter(fmt.Sprintf("consumer-group-join-failed-%s", c.groupID), metricRegistry)
-		consumerGroupSyncTotal = metrics.GetOrRegisterCounter(fmt.Sprintf("consumer-group-sync-total-%s", c.groupID), metricRegistry)
-		consumerGroupSyncFailed = metrics.GetOrRegisterCounter(fmt.Sprintf("consumer-group-sync-failed-%s", c.groupID), metricRegistry)
-	}
-
 	// Join consumer group
 	join, err := c.joinGroupRequest(coordinator, topics)
-	if consumerGroupJoinTotal != nil {
-		consumerGroupJoinTotal.Inc(1)
-	}
 	if err != nil {
 		_ = coordinator.Close()
-		if consumerGroupJoinFailed != nil {
-			consumerGroupJoinFailed.Inc(1)
-		}
+
 		return nil, err
-	}
-	if !errors.Is(join.Err, ErrNoError) {
-		if consumerGroupJoinFailed != nil {
-			consumerGroupJoinFailed.Inc(1)
-		}
 	}
 	switch join.Err {
 	case ErrNoError:
@@ -366,20 +334,10 @@ func (c *consumerGroup) newSession(ctx context.Context, topics []string, handler
 
 	// Sync consumer group
 	syncGroupResponse, err := c.syncGroupRequest(coordinator, members, plan, join.GenerationId, strategy)
-	if consumerGroupSyncTotal != nil {
-		consumerGroupSyncTotal.Inc(1)
-	}
 	if err != nil {
 		_ = coordinator.Close()
-		if consumerGroupSyncFailed != nil {
-			consumerGroupSyncFailed.Inc(1)
-		}
+
 		return nil, err
-	}
-	if !errors.Is(syncGroupResponse.Err, ErrNoError) {
-		if consumerGroupSyncFailed != nil {
-			consumerGroupSyncFailed.Inc(1)
-		}
 	}
 
 	switch syncGroupResponse.Err {

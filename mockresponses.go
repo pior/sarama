@@ -1297,7 +1297,7 @@ func (m *MockJoinGroupResponse) SetMemberId(id string) *MockJoinGroupResponse {
 }
 
 func (m *MockJoinGroupResponse) SetMember(id string, meta *ConsumerGroupMemberMetadata) *MockJoinGroupResponse {
-	bin, err := encode(meta, nil)
+	bin, err := encode(meta)
 	if err != nil {
 		panic(fmt.Sprintf("error encoding member metadata: %v", err))
 	}
@@ -1356,7 +1356,7 @@ func (m *MockSyncGroupResponse) SetError(kerr KError) *MockSyncGroupResponse {
 }
 
 func (m *MockSyncGroupResponse) SetMemberAssignment(assignment *ConsumerGroupMemberAssignment) *MockSyncGroupResponse {
-	bin, err := encode(assignment, nil)
+	bin, err := encode(assignment)
 	if err != nil {
 		panic(fmt.Sprintf("error encoding member assignment: %v", err))
 	}

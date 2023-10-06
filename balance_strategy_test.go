@@ -2306,7 +2306,7 @@ func encodeSubscriberPlanWithGeneration(t *testing.T, assignments map[string][]i
 	userDataBytes, err := encode(&StickyAssignorUserDataV1{
 		Topics:     assignments,
 		Generation: generation,
-	}, nil)
+	})
 	if err != nil {
 		t.Errorf("encodeSubscriberPlan error = %v", err)
 		t.FailNow()
@@ -2318,7 +2318,7 @@ func encodeSubscriberPlanWithGenerationForBenchmark(b *testing.B, assignments ma
 	userDataBytes, err := encode(&StickyAssignorUserDataV1{
 		Topics:     assignments,
 		Generation: generation,
-	}, nil)
+	})
 	if err != nil {
 		b.Errorf("encodeSubscriberPlan error = %v", err)
 		b.FailNow()
@@ -2329,7 +2329,7 @@ func encodeSubscriberPlanWithGenerationForBenchmark(b *testing.B, assignments ma
 func encodeSubscriberPlanWithOldSchema(t *testing.T, assignments map[string][]int32) []byte {
 	userDataBytes, err := encode(&StickyAssignorUserDataV0{
 		Topics: assignments,
-	}, nil)
+	})
 	if err != nil {
 		t.Errorf("encodeSubscriberPlan error = %v", err)
 		t.FailNow()

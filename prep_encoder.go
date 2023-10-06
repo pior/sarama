@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-
-	"github.com/rcrowley/go-metrics"
 )
 
 type prepEncoder struct {
@@ -202,10 +200,5 @@ func (pe *prepEncoder) pop() error {
 		pe.length += dpe.adjustLength(pe.length)
 	}
 
-	return nil
-}
-
-// we do not record metrics during the prep encoder pass
-func (pe *prepEncoder) metricRegistry() metrics.Registry {
 	return nil
 }

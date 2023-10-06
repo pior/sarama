@@ -186,7 +186,7 @@ func (b *RecordBatch) decode(pd packetDecoder) (err error) {
 	}
 
 	b.recordsLen = len(recBuffer)
-	err = decode(recBuffer, recordsArray(b.Records), nil)
+	err = decode(recBuffer, recordsArray(b.Records))
 	if errors.Is(err, ErrInsufficientData) {
 		b.PartialTrailingRecord = true
 		b.Records = nil
@@ -198,7 +198,7 @@ func (b *RecordBatch) decode(pd packetDecoder) (err error) {
 func (b *RecordBatch) encodeRecords(pe packetEncoder) error {
 	var raw []byte
 	var err error
-	if raw, err = encode(recordsArray(b.Records), pe.metricRegistry()); err != nil {
+	if raw, err = encode(recordsArray(b.Records)); err != nil {
 		return err
 	}
 	b.recordsLen = len(raw)

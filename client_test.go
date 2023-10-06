@@ -8,8 +8,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"github.com/rcrowley/go-metrics"
 )
 
 func safeClose(t testing.TB, c io.Closer) {
@@ -1156,27 +1154,4 @@ func TestInitProducerIDConnectionRefused(t *testing.T) {
 	}
 
 	safeClose(t, client)
-}
-
-func TestMetricsCleanup(t *testing.T) {
-	seedBroker := NewMockBroker(t, 1)
-	defer seedBroker.Close()
-	seedBroker.Returns(new(MetadataResponse))
-
-	config := NewTestConfig()
-	metrics.GetOrRegisterMeter("a", config.MetricRegistry)
-
-	client, err := NewClient([]string{seedBroker.Addr()}, config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	safeClose(t, client)
-
-	// Wait async close
-	time.Sleep(10 * time.Millisecond)
-
-	all := config.MetricRegistry.GetAll()
-	if len(all) != 1 || all["a"] == nil {
-		t.Errorf("excepted 1 metric, found: %v", all)
-	}
 }

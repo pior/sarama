@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/jcmturner/gofork/encoding/asn1"
 	"github.com/jcmturner/gokrb5/v8/asn1tools"
@@ -232,18 +231,13 @@ func (krbAuth *GSSAPIKerberosAuth) Authorize(broker *Broker) error {
 			Logger.Printf("Error while performing GSSAPI Kerberos Authentication: %s\n", err)
 			return err
 		}
-		requestTime := time.Now()
-		bytesWritten, err := krbAuth.writePackage(broker, packBytes)
+		_, err = krbAuth.writePackage(broker, packBytes)
 		if err != nil {
 			Logger.Printf("Error while performing GSSAPI Kerberos Authentication: %s\n", err)
 			return err
 		}
-		broker.updateOutgoingCommunicationMetrics(bytesWritten)
 		if krbAuth.step == GSS_API_VERIFY {
-			bytesRead := 0
-			receivedBytes, bytesRead, err = krbAuth.readPackage(broker)
-			requestLatency := time.Since(requestTime)
-			broker.updateIncomingCommunicationMetrics(bytesRead, requestLatency)
+			receivedBytes, _, err = krbAuth.readPackage(broker)
 			if err != nil {
 				Logger.Printf("Error while performing GSSAPI Kerberos Authentication: %s\n", err)
 				return err

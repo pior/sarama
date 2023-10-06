@@ -1,19 +1,15 @@
 package main
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
 	gosync "sync"
 	"time"
-
-	"github.com/rcrowley/go-metrics"
 
 	"github.com/IBM/sarama"
 	"github.com/IBM/sarama/tools/tls"
@@ -286,22 +282,6 @@ func main() {
 		printErrorAndExit(69, "Invalid configuration: %s", err)
 	}
 
-	// Print out metrics periodically.
-	done := make(chan struct{})
-	ctx, cancel := context.WithCancel(context.Background())
-	go func(ctx context.Context) {
-		defer close(done)
-		t := time.Tick(5 * time.Second)
-		for {
-			select {
-			case <-t:
-				printMetrics(os.Stdout, config.MetricRegistry)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}(ctx)
-
 	brokers := strings.Split(*brokers, ",")
 	if *sync {
 		runSyncProducer(*topic, *partition, *messageLoad, *messageSize, *routines,
@@ -310,9 +290,6 @@ func main() {
 		runAsyncProducer(*topic, *partition, *messageLoad, *messageSize,
 			config, brokers, *throughput)
 	}
-
-	cancel()
-	<-done
 }
 
 func runAsyncProducer(topic string, partition, messageLoad, messageSize int,
@@ -322,8 +299,6 @@ func runAsyncProducer(topic string, partition, messageLoad, messageSize int,
 		printErrorAndExit(69, "Failed to create producer: %s", err)
 	}
 	defer func() {
-		// Print final metrics.
-		printMetrics(os.Stdout, config.MetricRegistry)
 		if err := producer.Close(); err != nil {
 			printErrorAndExit(69, "Failed to close producer: %s", err)
 		}
@@ -369,8 +344,6 @@ func runSyncProducer(topic string, partition, messageLoad, messageSize, routines
 		printErrorAndExit(69, "Failed to create producer: %s", err)
 	}
 	defer func() {
-		// Print final metrics.
-		printMetrics(os.Stdout, config.MetricRegistry)
 		if err := producer.Close(); err != nil {
 			printErrorAndExit(69, "Failed to close producer: %s", err)
 		}
@@ -421,39 +394,6 @@ func runSyncProducer(topic string, partition, messageLoad, messageSize, routines
 		}
 	}
 	wg.Wait()
-}
-
-func printMetrics(w io.Writer, r metrics.Registry) {
-	recordSendRateMetric := r.Get("record-send-rate")
-	requestLatencyMetric := r.Get("request-latency-in-ms")
-	outgoingByteRateMetric := r.Get("outgoing-byte-rate")
-	requestsInFlightMetric := r.Get("requests-in-flight")
-
-	if recordSendRateMetric == nil || requestLatencyMetric == nil || outgoingByteRateMetric == nil ||
-		requestsInFlightMetric == nil {
-		return
-	}
-	recordSendRate := recordSendRateMetric.(metrics.Meter).Snapshot()
-	requestLatency := requestLatencyMetric.(metrics.Histogram).Snapshot()
-	requestLatencyPercentiles := requestLatency.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
-	outgoingByteRate := outgoingByteRateMetric.(metrics.Meter).Snapshot()
-	requestsInFlight := requestsInFlightMetric.(metrics.Counter).Count()
-	fmt.Fprintf(w, "%d records sent, %.1f records/sec (%.2f MiB/sec ingress, %.2f MiB/sec egress), "+
-		"%.1f ms avg latency, %.1f ms stddev, %.1f ms 50th, %.1f ms 75th, "+
-		"%.1f ms 95th, %.1f ms 99th, %.1f ms 99.9th, %d total req. in flight\n",
-		recordSendRate.Count(),
-		recordSendRate.RateMean(),
-		recordSendRate.RateMean()*float64(*messageSize)/1024/1024,
-		outgoingByteRate.RateMean()/1024/1024,
-		requestLatency.Mean(),
-		requestLatency.StdDev(),
-		requestLatencyPercentiles[0],
-		requestLatencyPercentiles[1],
-		requestLatencyPercentiles[2],
-		requestLatencyPercentiles[3],
-		requestLatencyPercentiles[4],
-		requestsInFlight,
-	)
 }
 
 func printUsageErrorAndExit(message string) {

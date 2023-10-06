@@ -298,7 +298,7 @@ func (b *MockBroker) handleRequests(conn io.ReadWriteCloser, idx int, wg *sync.W
 				s.Sprintf("%#v", res),
 			)
 
-			encodedRes, err := encode(res, nil)
+			encodedRes, err := encode(res)
 			if err != nil {
 				b.serverError(fmt.Errorf("failed to encode %T - %w", res, err))
 				break

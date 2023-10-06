@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/require"
 
 	"github.com/IBM/sarama/internal/toxiproxy"
@@ -826,7 +825,6 @@ func testProducingMessages(t *testing.T, config *Config, minVersion KafkaVersion
 		name := t.Name() + "-v" + version.String()
 		t.Run(name, func(t *testing.T) {
 			config.ClientID = name
-			config.MetricRegistry = metrics.NewRegistry()
 			checkKafkaVersion(t, version.String())
 			config.Version = version
 
@@ -1119,17 +1117,6 @@ func BenchmarkProducerMediumSnappy(b *testing.B) {
 func benchmarkProducer(b *testing.B, conf *Config, topic string, value Encoder) {
 	setupFunctionalTest(b)
 	defer teardownFunctionalTest(b)
-
-	metricsDisable := os.Getenv("METRICS_DISABLE")
-	if metricsDisable != "" {
-		previousUseNilMetrics := metrics.UseNilMetrics
-		Logger.Println("Disabling metrics using no-op implementation")
-		metrics.UseNilMetrics = true
-		// Restore previous setting
-		defer func() {
-			metrics.UseNilMetrics = previousUseNilMetrics
-		}()
-	}
 
 	producer, err := NewAsyncProducer(FunctionalTestEnv.KafkaBrokerAddrs, conf)
 	if err != nil {

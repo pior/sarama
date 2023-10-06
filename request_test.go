@@ -354,7 +354,7 @@ func TestAllocateBodyProtocolVersions(t *testing.T) {
 
 func testEncodable(t *testing.T, name string, in encoder, expect []byte) {
 	t.Helper()
-	packet, err := encode(in, nil)
+	packet, err := encode(in)
 	if err != nil {
 		t.Error(err)
 	} else if !bytes.Equal(packet, expect) {
@@ -364,7 +364,7 @@ func testEncodable(t *testing.T, name string, in encoder, expect []byte) {
 
 func testDecodable(t *testing.T, name string, out decoder, in []byte) {
 	t.Helper()
-	err := decode(in, out, nil)
+	err := decode(in, out)
 	if err != nil {
 		t.Error("Decoding", name, "failed:", err)
 	}
@@ -372,7 +372,7 @@ func testDecodable(t *testing.T, name string, out decoder, in []byte) {
 
 func testVersionDecodable(t *testing.T, name string, out versionedDecoder, in []byte, version int16) {
 	t.Helper()
-	err := versionedDecode(in, out, version, nil)
+	err := versionedDecode(in, out, version)
 	if err != nil {
 		t.Error("Decoding", name, "version", version, "failed:", err)
 	}
@@ -397,7 +397,7 @@ func testRequestWithoutByteComparison(t *testing.T, name string, rb protocolBody
 
 func testRequestEncode(t *testing.T, name string, rb protocolBody, expected []byte) []byte {
 	req := &request{correlationID: 123, clientID: "foo", body: rb}
-	packet, err := encode(req, nil)
+	packet, err := encode(req)
 
 	headerSize := 0
 
@@ -435,7 +435,7 @@ func testRequestDecode(t *testing.T, name string, rb protocolBody, packet []byte
 }
 
 func testResponse(t *testing.T, name string, res protocolBody, expected []byte) {
-	encoded, err := encode(res, nil)
+	encoded, err := encode(res)
 	if err != nil {
 		t.Error(err)
 	} else if expected != nil && !bytes.Equal(encoded, expected) {
@@ -443,7 +443,7 @@ func testResponse(t *testing.T, name string, res protocolBody, expected []byte) 
 	}
 
 	decoded := reflect.New(reflect.TypeOf(res).Elem()).Interface().(versionedDecoder)
-	if err := versionedDecode(encoded, decoded, res.version(), nil); err != nil {
+	if err := versionedDecode(encoded, decoded, res.version()); err != nil {
 		t.Error("Decoding", name, "failed:", err)
 	}
 

@@ -276,7 +276,7 @@ func (s *stickyBalanceStrategy) AssignmentData(memberID string, topics map[strin
 	return encode(&StickyAssignorUserDataV1{
 		Topics:     topics,
 		Generation: generationID,
-	}, nil)
+	})
 }
 
 func strsContains(s []string, value string) bool {
@@ -621,9 +621,9 @@ func assignPartition(partition topicPartitionAssignment, sortedCurrentSubscripti
 // Deserialize topic partition assignment data to aid with creation of a sticky assignment.
 func deserializeTopicPartitionAssignment(userDataBytes []byte) (StickyAssignorUserData, error) {
 	userDataV1 := &StickyAssignorUserDataV1{}
-	if err := decode(userDataBytes, userDataV1, nil); err != nil {
+	if err := decode(userDataBytes, userDataV1); err != nil {
 		userDataV0 := &StickyAssignorUserDataV0{}
-		if err := decode(userDataBytes, userDataV0, nil); err != nil {
+		if err := decode(userDataBytes, userDataV0); err != nil {
 			return nil, err
 		}
 		return userDataV0, nil

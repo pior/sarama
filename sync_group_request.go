@@ -153,7 +153,7 @@ func (r *SyncGroupRequest) AddGroupAssignmentMember(
 	memberId string,
 	memberAssignment *ConsumerGroupMemberAssignment,
 ) error {
-	bin, err := encode(memberAssignment, nil)
+	bin, err := encode(memberAssignment)
 	if err != nil {
 		return err
 	}
